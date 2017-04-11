@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	git "gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"gopkg.in/src-d/go-git.v4/storage/memory"
 )
 
@@ -13,6 +14,7 @@ type Release struct {
 	MajorVersion   int
 	MinorVersion   int
 	PatchVersion   int
+	ReleaseDate    string
 	CommitMessages []string
 }
 
@@ -40,6 +42,7 @@ func main() {
 		unreleased.CommitMessages = append(unreleased.CommitMessages, message)
 
 		if strings.Contains(message, "[Release]") {
+			unreleased.ReleaseDate = history[i].Author.When.Format(object.DateFormat)
 			releases = append(releases, unreleased)
 			unreleased = newRelease()
 		}
@@ -64,14 +67,28 @@ func newRelease() Release {
 }
 
 func printReleases(unreleased Release, releases []Release) {
-	fmt.Println("Unreleased changes:")
-	fmt.Printf("%s\n", strings.Join(unreleased.CommitMessages, ""))
+	fmt.Println("# Change log")
+
+	fmt.Println("## [Unreleased]")
+	fmt.Println("### [Changed]")
+	fmt.Printf("- %s\n\n", formatCommitMessages(unreleased.CommitMessages))
 
 	for i := len(releases) - 1; i >= 0; i-- {
 		release := releases[i]
-		fmt.Printf("Release %d.%d.%d:\n", release.MajorVersion, release.MinorVersion, release.PatchVersion)
-		fmt.Printf("%s\n", strings.Join(release.CommitMessages, ""))
+		fmt.Printf(
+			"## [%d.%d.%d] - (%s):\n",
+			release.MajorVersion, release.MinorVersion, release.PatchVersion,
+			release.ReleaseDate,
+		)
+		fmt.Println("### Changed")
+		fmt.Printf("- %s\n\n", formatCommitMessages(releases[i].CommitMessages))
 	}
+}
+
+func formatCommitMessages(messages []string) string {
+	formatted := strings.Join(messages, "")
+	formatted = strings.Trim(formatted, "\n")
+	return strings.Replace(formatted, "\n", "\n- ", -1)
 }
 
 func setVersions(releases *[]Release) {
